@@ -9,8 +9,8 @@ import {
 
 import {manager, ReactCBLite} from 'react-native-couchbase-lite';
 
-const localDBName = 'cbdb';
-
+const localDBName = 'cbtest';
+let database = null;
 class Movies extends Component {
   constructor(props) {
     super(props);
@@ -19,6 +19,7 @@ class Movies extends Component {
       dataSource: new ListView.DataSource({
         rowHasChanged: (row1, row2) => row1 !== row2,
       }),
+      data: [],
       sequence: '',
       filteredMovies: 0
     }
@@ -27,7 +28,7 @@ class Movies extends Component {
   componentDidMount() {
     ReactCBLite.init((url) => {
       // instantiate a new database
-      var database = new manager(url, localDBName);
+      database = new manager(url, localDBName);
       database.createDatabase()
         .then((res) => {
           database.createDesignDocument('main', {
@@ -47,28 +48,41 @@ class Movies extends Component {
               database.changesEventEmitter.on('changes', function (e) {
                 console.log('changes',e)
                 this.setState({sequence: e.last_seq});
+                this.populateData();
               }.bind(this));
             });
-        })
-        .then((res) => {
-          return database.queryView('main', 'movies', {include_docs: true});
-        })
-        .then((res) => {
-          console.log('data',res.rows);
-          this.setState({
-            dataSource: this.state.dataSource.cloneWithRows(res.rows.slice(0,5))
-          });
         })
         .catch((ex) => {
           console.log(ex)
         });
-
+        this.populateData();
+        setTimeout(()=> {
+          const data = this.state.data;
+          data.slice(0,3).forEach(item => {
+            console.log('remove', item.doc._id, item.doc._rev, item.doc.title)
+            database.deleteDocument(item.doc._id, item.doc._rev);
+          });
+          this.populateData();
+        },5000)
     });
   }
 
+  populateData = () => {
+    database.queryView('main', 'movies', {include_docs: true})
+      .then((res) => {
+        console.log('data',res.rows);
+        this.setState({
+          data: res.rows,
+          dataSource: this.state.dataSource.cloneWithRows(res.rows.slice(0,5))
+        });
+      })
+      .catch((ex) => {
+        console.log(ex)
+      });
+  }
   renderMovie(data) {
     const movie = data.doc;
-    console.log(movie.posters)
+    // console.log(movie.posters)
     return (
       <View style={styles.container}>
         <Image

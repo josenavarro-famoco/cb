@@ -9,6 +9,7 @@ import {
   AppRegistry,
 } from 'react-native';
 
-import App from './app';
+// import App from './app';
+import TodoApp from './app/todoApp';
 
-AppRegistry.registerComponent('cb', () => App);
+AppRegistry.registerComponent('cb', () => TodoApp);
